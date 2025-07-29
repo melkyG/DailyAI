@@ -34,24 +34,17 @@ import requests
 
 def get_outfit_suggestion(weather_data, location=None):
     prompt = format_weather_prompt(weather_data, location)
-    api_url = "https://openrouter.ai/api/v1/chat/completions"
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    payload = {
-        "model": "openai/gpt-3.5-turbo",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant that suggests outfits based on weather."},
-            {"role": "user", "content": prompt}
-        ]
-    }
+    api_url = "https://api-inference.huggingface.co/models/google/flan-t5-large"
+    api_key = os.getenv("HF_API_KEY")
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    payload = {"inputs": prompt}
     try:
         resp = requests.post(api_url, headers=headers, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-        # OpenRouter returns choices[0].message.content
-        if "choices" in data and data["choices"] and "message" in data["choices"][0]:
-            return data["choices"][0]["message"]["content"].strip()
-        if "error" in data:
+        if isinstance(data, list) and data and "generated_text" in data[0]:
+            return data[0]["generated_text"].strip()
+        if isinstance(data, dict) and "error" in data:
             return f"[LLM error: {data['error']}]"
         return f"[Unexpected LLM response: {data}]"
     except Exception as e:
